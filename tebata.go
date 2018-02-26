@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"sync"
 )
 
 type status struct {
+	mutex            *sync.Mutex
 	signalCh         chan os.Signal
 	ReservedFunction []functionData
 }
@@ -20,6 +22,7 @@ type functionData struct {
 
 func New(signals ...os.Signal) *status {
 	s := &status{
+		mutex:    new(sync.Mutex),
 		signalCh: make(chan os.Signal, 1),
 	}
 	signal.Notify(s.signalCh, signals...)
@@ -28,6 +31,8 @@ func New(signals ...os.Signal) *status {
 }
 
 func (s *status) Reserve(function interface{}, args ...interface{}) error {
+	defer s.mutex.Unlock()
+	s.mutex.Lock()
 	if reflect.ValueOf(function).Kind() != reflect.Func {
 		return errors.New(
 			fmt.Sprintf("Invalid \"function\" argument.\n Expect Type: func"),
@@ -51,6 +56,8 @@ func (s *status) Reserve(function interface{}, args ...interface{}) error {
 }
 
 func (s *status) exec() {
+	defer s.mutex.Unlock()
+	s.mutex.Lock()
 	for _, rf := range s.ReservedFunction {
 		argsValueOf := reflect.ValueOf(rf.args)
 		argsKind := argsValueOf.Kind()
