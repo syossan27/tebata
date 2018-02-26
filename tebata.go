@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"reflect"
 	"sync"
-	"syscall"
 )
 
 type status struct {
@@ -21,13 +20,13 @@ type functionData struct {
 	args     []interface{}
 }
 
-func New() *status {
+func New(signals ...os.Signal) *status {
 	s := &status{
 		wg:       &sync.WaitGroup{},
 		signalCh: make(chan os.Signal, 1),
 	}
 	s.wg.Add(1)
-	signal.Notify(s.signalCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s.signalCh, signals...)
 	s.listen()
 	return s
 }
