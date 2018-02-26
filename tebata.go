@@ -6,11 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
-	"sync"
 )
 
 type status struct {
-	wg               *sync.WaitGroup
 	signalCh         chan os.Signal
 	ReservedFunction []functionData
 }
@@ -22,12 +20,10 @@ type functionData struct {
 
 func New(signals ...os.Signal) *status {
 	s := &status{
-		wg:       &sync.WaitGroup{},
 		signalCh: make(chan os.Signal, 1),
 	}
-	s.wg.Add(1)
 	signal.Notify(s.signalCh, signals...)
-	s.listen()
+	go s.listen()
 	return s
 }
 
@@ -54,9 +50,7 @@ func (s *status) Reserve(function interface{}, args ...interface{}) error {
 	return nil
 }
 
-func (s *status) Exec() error {
-	s.wg.Wait()
-
+func (s *status) exec() {
 	for _, rf := range s.ReservedFunction {
 		argsValueOf := reflect.ValueOf(rf.args)
 		argsKind := argsValueOf.Kind()
@@ -75,13 +69,9 @@ func (s *status) Exec() error {
 			function := reflect.ValueOf(rf.function)
 			function.Call(argsValue)
 		default:
-			return errors.New(
-				fmt.Sprintf("Invalid function arguments. arguments type: %s", argsTypeName),
-			)
+			panic(fmt.Sprintf("Invalid function arguments. arguments type: %s", argsTypeName))
 		}
 	}
-
-	return nil
 }
 
 func convertInterfaceSlice(args interface{}) (convertedSlice []interface{}) {
@@ -97,9 +87,11 @@ func convertInterfaceSlice(args interface{}) (convertedSlice []interface{}) {
 }
 
 func (s *status) listen() {
-	defer s.wg.Done()
 	for {
-		<-s.signalCh
-		break
+		select {
+		case <-s.signalCh:
+			s.exec()
+			return
+		}
 	}
 }
