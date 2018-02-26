@@ -27,9 +27,14 @@ func main() {
 	t := New(syscall.SIGINT, syscall.SIGTEM)
 	
 	// Do function when catch signal.
-	t.Reserve(sum, 1, 2)	
-	t.Reserve(hello)	
+	t.Reserve(sum, 1, 2)
+	t.Reserve(hello)
+	t.Reserve(os.Exit, 0)
 	t.Exec()
+	
+	for {
+		// Do something
+	}
 }
  
 func sum(firstArg, secondArg int) {
