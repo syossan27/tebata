@@ -30,7 +30,6 @@ func main() {
 	t.Reserve(sum, 1, 2)
 	t.Reserve(hello)
 	t.Reserve(os.Exit, 0)
-	t.Exec()
 	
 	for {
 		// Do something
