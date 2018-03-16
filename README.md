@@ -1,5 +1,7 @@
 # Tebata（手旗）
 
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/syossan27/tebata/blob/master/LICENSE)
+
 ## Overview
 
 Simple linux signal handler for golang.
