@@ -98,7 +98,6 @@ func (s *status) listen() {
 		select {
 		case <-s.signalCh:
 			s.exec()
-			return
 		}
 	}
 }
