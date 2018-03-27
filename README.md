@@ -26,7 +26,7 @@ import (
 )
  
 func main() {
-	t := tebata.New(syscall.SIGINT, syscall.SIGTEM)
+	t := tebata.New(syscall.SIGINT, syscall.SIGTERM)
 	
 	// Do function when catch signal.
 	t.Reserve(sum, 1, 2)
