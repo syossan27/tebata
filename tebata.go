@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-type status struct {
+type Tebata struct {
 	mutex            *sync.Mutex
 	signalCh         chan os.Signal
 	ReservedFunction []functionData
@@ -20,8 +20,8 @@ type functionData struct {
 	args     []interface{}
 }
 
-func New(signals ...os.Signal) *status {
-	s := &status{
+func New(signals ...os.Signal) *Tebata {
+	s := &Tebata{
 		mutex:    new(sync.Mutex),
 		signalCh: make(chan os.Signal, 1),
 	}
@@ -30,7 +30,7 @@ func New(signals ...os.Signal) *status {
 	return s
 }
 
-func (s *status) Reserve(function interface{}, args ...interface{}) error {
+func (s *Tebata) Reserve(function interface{}, args ...interface{}) error {
 	defer s.mutex.Unlock()
 	s.mutex.Lock()
 	if reflect.ValueOf(function).Kind() != reflect.Func {
@@ -55,7 +55,7 @@ func (s *status) Reserve(function interface{}, args ...interface{}) error {
 	return nil
 }
 
-func (s *status) exec() {
+func (s *Tebata) exec() {
 	defer s.mutex.Unlock()
 	s.mutex.Lock()
 	for _, rf := range s.ReservedFunction {
@@ -93,7 +93,7 @@ func convertInterfaceSlice(args interface{}) (convertedSlice []interface{}) {
 	return convertedSlice
 }
 
-func (s *status) listen() {
+func (s *Tebata) listen() {
 	for {
 		select {
 		case <-s.signalCh:
