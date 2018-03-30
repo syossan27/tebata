@@ -50,3 +50,10 @@ func hello() {
 //   3
 //   Hello
 ```
+
+
+## Why?
+
+Look this article.
+
+[How to implement a signal handler in Go](https://dev.to/syossan27/how-to-implement-a-signal-handler-in-go--582c)
