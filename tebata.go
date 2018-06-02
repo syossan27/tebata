@@ -1,7 +1,6 @@
 package tebata
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,9 +8,7 @@ import (
 	"sync"
 )
 
-/*
-	Tebata struct has any status.
-*/
+// Tebata struct has any status.
 type Tebata struct {
 	mutex            *sync.Mutex
 	signalCh         chan os.Signal
@@ -23,9 +20,7 @@ type functionData struct {
 	args     []interface{}
 }
 
-/*
-	Create Tebata struct, and start to catch signal.
-*/
+// New Tebata struct, and start to catch signal.
 func New(signals ...os.Signal) *Tebata {
 	s := &Tebata{
 		mutex:    new(sync.Mutex),
@@ -71,21 +66,15 @@ func (s *Tebata) exec() {
 	}
 }
 
-/*
-	Reserve the function to be executed when receiving the Linux signal.
-*/
+// Reserve the function to be executed when receiving the Linux signal.
 func (s *Tebata) Reserve(function interface{}, args ...interface{}) error {
 	defer s.mutex.Unlock()
 	s.mutex.Lock()
 	if reflect.ValueOf(function).Kind() != reflect.Func {
-		return errors.New(
-			fmt.Sprintf("Invalid \"function\" argument.\n Expect Type: func"),
-		)
+		return fmt.Errorf("Invalid \"function\" argument.\n Expect Type: func")
 	}
 	if reflect.ValueOf(args).Kind() != reflect.Slice {
-		return errors.New(
-			fmt.Sprintf("Invalid \"args\" argument.\n Expect Type: slice"),
-		)
+		return fmt.Errorf("Invalid \"args\" argument.\n Expect Type: slice")
 	}
 
 	s.reservedFunction = append(
