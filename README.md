@@ -1,5 +1,6 @@
 # Tebata（手旗）
 
+[![GoDoc](https://godoc.org/github.com/syossan27/tebata?status.svg)](https://godoc.org/github.com/syossan27/tebata)
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/syossan27/tebata/blob/master/LICENSE)
 
 ## Overview
