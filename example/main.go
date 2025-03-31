@@ -10,8 +10,9 @@ import (
 )
 
 // Expect output when press the Ctrl + C:
-//   3
-//   Hello
+//
+//	3
+//	Hello
 func main() {
 	t := tebata.New(syscall.SIGINT, syscall.SIGTERM)
 

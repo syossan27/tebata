@@ -1,29 +1,43 @@
+// Package tebata provides a way to handle OS signals gracefully.
 package tebata
 
 import (
-	"fmt"
+	"context"
+	"errors"
 	"os"
 	"os/signal"
 	"reflect"
 	"sync"
 )
 
-// Tebata struct has any status.
+// ErrInvalidFunction is returned when a non-function is passed to Reserve.
+var ErrInvalidFunction = errors.New("invalid function argument: expected a function")
+
+// ErrInvalidArgs is returned when invalid arguments are passed to Reserve.
+var ErrInvalidArgs = errors.New("invalid args argument: expected a slice")
+
+// Tebata handles signal-triggered function execution.
 type Tebata struct {
-	mutex            *sync.Mutex
-	signalCh         chan os.Signal
-	reservedFunction []functionData
+	mutex             sync.Mutex
+	ctx               context.Context
+	cancel            context.CancelFunc
+	signalCh          chan os.Signal
+	reservedFunctions []functionData
 }
 
+// functionData stores a function and its arguments to be executed when a signal is received.
 type functionData struct {
-	function interface{}
-	args     []interface{}
+	function any
+	args     []any
 }
 
-// New Tebata struct, and start to catch signal.
+// New creates a new Tebata instance and starts listening for the specified signals.
+// It uses context for better cancellation support.
 func New(signals ...os.Signal) *Tebata {
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &Tebata{
-		mutex:    new(sync.Mutex),
+		ctx:      ctx,
+		cancel:   cancel,
 		signalCh: make(chan os.Signal, 1),
 	}
 	signal.Notify(s.signalCh, signals...)
@@ -31,71 +45,58 @@ func New(signals ...os.Signal) *Tebata {
 	return s
 }
 
+// listen waits for signals and executes reserved functions when signals are received.
 func (s *Tebata) listen() {
 	for {
 		select {
 		case <-s.signalCh:
 			s.exec()
+		case <-s.ctx.Done():
+			return
 		}
 	}
 }
 
+// exec executes all reserved functions.
 func (s *Tebata) exec() {
-	defer s.mutex.Unlock()
 	s.mutex.Lock()
-	for _, rf := range s.reservedFunction {
-		argsValueOf := reflect.ValueOf(rf.args)
-		argsKind := argsValueOf.Kind()
-		argsTypeName := argsValueOf.Type().Name()
+	defer s.mutex.Unlock()
 
-		switch argsKind {
-		case reflect.Slice:
-			// Expand argsValue for convert args element from interface{} to reflect.Value
-			var argsValue []reflect.Value
-			argsInterface := argsValueOf.Interface().([]interface{})
-			for _, arg := range argsInterface {
-				argsValue = append(argsValue, reflect.ValueOf(arg))
-			}
-
-			// Call function
-			function := reflect.ValueOf(rf.function)
-			function.Call(argsValue)
-		default:
-			panic(fmt.Sprintf("Invalid function arguments. arguments type: %s", argsTypeName))
+	for _, fd := range s.reservedFunctions {
+		// Use reflection to call the function with its arguments
+		function := reflect.ValueOf(fd.function)
+		var args []reflect.Value
+		for _, arg := range fd.args {
+			args = append(args, reflect.ValueOf(arg))
 		}
+		function.Call(args)
 	}
 }
 
-// Reserve the function to be executed when receiving the Linux signal.
-func (s *Tebata) Reserve(function interface{}, args ...interface{}) error {
-	defer s.mutex.Unlock()
+// Reserve registers a function to be executed when a signal is received.
+// It returns an error if the function or arguments are invalid.
+func (s *Tebata) Reserve(function any, args ...any) error {
 	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	if reflect.ValueOf(function).Kind() != reflect.Func {
-		return fmt.Errorf("Invalid \"function\" argument.\n Expect Type: func")
-	}
-	if reflect.ValueOf(args).Kind() != reflect.Slice {
-		return fmt.Errorf("Invalid \"args\" argument.\n Expect Type: slice")
+		return ErrInvalidFunction
 	}
 
-	s.reservedFunction = append(
-		s.reservedFunction,
+	s.reservedFunctions = append(
+		s.reservedFunctions,
 		functionData{
-			function,
-			convertInterfaceSlice(args),
+			function: function,
+			args:     args,
 		},
 	)
 
 	return nil
 }
 
-func convertInterfaceSlice(args interface{}) (convertedSlice []interface{}) {
-	a := reflect.ValueOf(args)
-	length := a.Len()
-	convertedSlice = make([]interface{}, length)
-
-	for i := 0; i < length; i++ {
-		convertedSlice[i] = a.Index(i).Interface()
-	}
-
-	return convertedSlice
+// Close stops the signal handling and cleans up resources.
+func (s *Tebata) Close() {
+	s.cancel()
+	signal.Stop(s.signalCh)
+	close(s.signalCh)
 }
