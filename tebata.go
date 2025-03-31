@@ -16,6 +16,15 @@ var ErrInvalidFunction = errors.New("invalid function argument: expected a funct
 // ErrInvalidArgs is returned when invalid arguments are passed to Reserve.
 var ErrInvalidArgs = errors.New("invalid args argument: expected a slice")
 
+// ErrTypeMismatch is returned when the function arguments don't match the provided arguments.
+var ErrTypeMismatch = errors.New("type mismatch: function parameter types don't match provided argument types")
+
+// ErrTooFewArgs is returned when too few arguments are provided for the function.
+var ErrTooFewArgs = errors.New("too few arguments: not enough arguments provided for function")
+
+// ErrTooManyArgs is returned when too many arguments are provided for the function.
+var ErrTooManyArgs = errors.New("too many arguments: too many arguments provided for function")
+
 // Tebata handles signal-triggered function execution.
 type Tebata struct {
 	mutex             sync.Mutex
@@ -75,12 +84,46 @@ func (s *Tebata) exec() {
 
 // Reserve registers a function to be executed when a signal is received.
 // It returns an error if the function or arguments are invalid.
+// It also validates that the provided arguments match the function's parameter types.
 func (s *Tebata) Reserve(function any, args ...any) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if reflect.ValueOf(function).Kind() != reflect.Func {
+	funcValue := reflect.ValueOf(function)
+	if funcValue.Kind() != reflect.Func {
 		return ErrInvalidFunction
+	}
+
+	// Get the function type to check parameter types
+	funcType := funcValue.Type()
+	numParams := funcType.NumIn()
+	numArgs := len(args)
+
+	// Check if we have too few arguments
+	if numArgs < numParams {
+		return ErrTooFewArgs
+	}
+
+	// Check if we have too many arguments
+	if numArgs > numParams {
+		return ErrTooManyArgs
+	}
+
+	// Check if argument types match parameter types
+	for i := 0; i < numParams; i++ {
+		paramType := funcType.In(i)
+
+		// Skip nil arguments as they can be assigned to any type
+		if args[i] == nil {
+			continue
+		}
+
+		argType := reflect.TypeOf(args[i])
+
+		// Check if the argument can be assigned to the parameter
+		if !argType.AssignableTo(paramType) {
+			return ErrTypeMismatch
+		}
 	}
 
 	s.reservedFunctions = append(

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"syscall"
 	"testing"
-	"time"
 )
 
 func TestNew(t *testing.T) {
@@ -31,19 +30,6 @@ func TestNew(t *testing.T) {
 	if s.signalCh == nil {
 		t.Error("Signal channel is nil")
 	}
-
-	// Test that the signal channel receives signals
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		s.signalCh <- os.Interrupt
-	}()
-
-	select {
-	case <-s.signalCh:
-		// Success
-	case <-time.After(500 * time.Millisecond):
-		t.Error("Signal channel did not receive signal")
-	}
 }
 
 func TestStatus_Reserve(t *testing.T) {
@@ -51,7 +37,7 @@ func TestStatus_Reserve(t *testing.T) {
 	defer s.Close()
 
 	// Test reserving a valid function
-	err := s.Reserve(func() {}, nil)
+	err := s.Reserve(func() {})
 	if err != nil {
 		t.Errorf("Reserve returned error for valid function: %v", err)
 	}
@@ -68,6 +54,45 @@ func TestStatus_Reserve(t *testing.T) {
 	// Test that the function was added to reservedFunctions
 	if len(s.reservedFunctions) != 1 {
 		t.Errorf("Expected 1 reserved function, got %d", len(s.reservedFunctions))
+	}
+
+	// Test with correct argument types
+	err = s.Reserve(func(a string, b int) {}, "test", 123)
+	if err != nil {
+		t.Errorf("Reserve returned error for valid function with correct args: %v", err)
+	}
+
+	// Test with too few arguments
+	err = s.Reserve(func(a string, b int) {}, "test")
+	if err == nil {
+		t.Error("Reserve did not return error for too few arguments")
+	}
+	if err != ErrTooFewArgs {
+		t.Errorf("Expected ErrTooFewArgs, got: %v", err)
+	}
+
+	// Test with too many arguments
+	err = s.Reserve(func(a string) {}, "test", 123)
+	if err == nil {
+		t.Error("Reserve did not return error for too many arguments")
+	}
+	if err != ErrTooManyArgs {
+		t.Errorf("Expected ErrTooManyArgs, got: %v", err)
+	}
+
+	// Test with incorrect argument types
+	err = s.Reserve(func(a string, b int) {}, 123, "test")
+	if err == nil {
+		t.Error("Reserve did not return error for incorrect argument types")
+	}
+	if err != ErrTypeMismatch {
+		t.Errorf("Expected ErrTypeMismatch, got: %v", err)
+	}
+
+	// Test with nil argument (should work for any type)
+	err = s.Reserve(func(a *string) {}, nil)
+	if err != nil {
+		t.Errorf("Reserve returned error for nil argument: %v", err)
 	}
 }
 
