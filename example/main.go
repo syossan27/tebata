@@ -17,9 +17,15 @@ func main() {
 	t := tebata.New(syscall.SIGINT, syscall.SIGTERM)
 
 	// Do function when catch signal.
-	t.Reserve(sum, 1, 2)
-	t.Reserve(hello)
-	t.Reserve(os.Exit, 0)
+	if err := t.Reserve(sum, 1, 2); err != nil {
+		fmt.Printf("Failed to reserve sum function: %v\n", err)
+	}
+	if err := t.Reserve(hello); err != nil {
+		fmt.Printf("Failed to reserve hello function: %v\n", err)
+	}
+	if err := t.Reserve(os.Exit, 0); err != nil {
+		fmt.Printf("Failed to reserve exit function: %v\n", err)
+	}
 
 	for {
 		// Do something
