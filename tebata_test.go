@@ -120,11 +120,11 @@ func TestStatus_exec(t *testing.T) {
 	<-done
 
 	if err := w.Close(); err != nil {
-		t.Errorf("Failed to close pipe writer: %v", err)
+		t.Fatalf("Failed to close pipe writer: %v", err)
 	}
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
-		t.Errorf("Failed to copy from pipe reader: %v", err)
+		t.Fatalf("Failed to copy from pipe reader: %v", err)
 	}
 	os.Stdout = stdout
 
@@ -175,11 +175,11 @@ func TestStatus_exec_race_check(t *testing.T) {
 	<-done
 
 	if err := w.Close(); err != nil {
-		t.Errorf("Failed to close pipe writer: %v", err)
+		t.Fatalf("Failed to close pipe writer: %v", err)
 	}
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
-		t.Errorf("Failed to copy from pipe reader: %v", err)
+		t.Fatalf("Failed to copy from pipe reader: %v", err)
 	}
 	os.Stdout = stdout
 
