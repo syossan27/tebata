@@ -106,20 +106,26 @@ func TestStatus_exec(t *testing.T) {
 	s := New(syscall.SIGINT, syscall.SIGTERM)
 	defer s.Close()
 
-	s.Reserve(
+	if err := s.Reserve(
 		func(first, second int, done chan int) {
 			fmt.Print(strconv.Itoa(first + second))
 			done <- 1
 		},
 		1, 2, done,
-	)
+	); err != nil {
+		t.Fatalf("Failed to reserve function: %v", err)
+	}
 
 	s.signalCh <- os.Interrupt
 	<-done
 
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatalf("Failed to close pipe writer: %v", err)
+	}
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("Failed to copy from pipe reader: %v", err)
+	}
 	os.Stdout = stdout
 
 	if buf.Len() == 0 {
@@ -141,32 +147,40 @@ func TestStatus_exec_race_check(t *testing.T) {
 	s1 := New(syscall.SIGINT, syscall.SIGTERM)
 	defer s1.Close()
 
-	s1.Reserve(
+	if err := s1.Reserve(
 		func(first, second int, done chan int) {
 			fmt.Print(strconv.Itoa(first + second))
 			done <- 1
 		},
 		1, 2, done,
-	)
+	); err != nil {
+		t.Fatalf("Failed to reserve function for s1: %v", err)
+	}
 
 	s2 := New(syscall.SIGINT, syscall.SIGTERM)
 	defer s2.Close()
 
-	s2.Reserve(
+	if err := s2.Reserve(
 		func(first, second int, done chan int) {
 			fmt.Print(strconv.Itoa(first + second))
 			done <- 1
 		},
 		1, 2, done,
-	)
+	); err != nil {
+		t.Fatalf("Failed to reserve function for s2: %v", err)
+	}
 
 	s1.signalCh <- os.Interrupt
 	s2.signalCh <- os.Interrupt
 	<-done
 
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatalf("Failed to close pipe writer: %v", err)
+	}
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("Failed to copy from pipe reader: %v", err)
+	}
 	os.Stdout = stdout
 
 	if buf.Len() == 0 {
